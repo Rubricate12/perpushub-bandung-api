@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  fullName  String
+  email     String   @unique
+  password  String
+  loans     Loan[]
+}
+
+model Book {
+  id          Int           @id @default(autoincrement())
+  title       String
+  image       String?
+  authors     BookAuthor[]
+  copies      BookCopy[]
+}
+
+model Author {
+  id        Int           @id @default(autoincrement())
+  name      String
+  books     BookAuthor[]
+}
+
+model BookAuthor {
+  bookId    Int
+  authorId  Int
+
+  book      Book   @relation(fields: [bookId], references: [id])
+  author    Author @relation(fields: [authorId], references: [id])
+
+  @@id([bookId, authorId])
+}
+
+model Library {
+  id        Int        @id @default(autoincrement())
+  name      String
+  address   String
+  copies    BookCopy[]
+}
+
+model BookCopy {
+  id         Int        @id @default(autoincrement())
+  bookId     Int
+  libraryId  Int
+  status     BookStatus @default(AVAILABLE)
+
+  book       Book     @relation(fields: [bookId], references: [id])
+  library    Library  @relation(fields: [libraryId], references: [id])
+  loans      Loan[]
+}
+
+model Loan {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  bookCopyId  Int
+  loanDate    DateTime  @default(now())
+  dueDate     DateTime
+  returnDate  DateTime?
+
+  user        User     @relation(fields: [userId], references: [id])
+  bookCopy    BookCopy @relation(fields: [bookCopyId], references: [id])
+}
+
+enum BookStatus {
+  AVAILABLE
+  BORROWED
+  LOST
+  DAMAGED
+}
