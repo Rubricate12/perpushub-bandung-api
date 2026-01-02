@@ -7,11 +7,28 @@ import { LoginDto } from './dto/login.dto';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  /*
+  {
+    "status": "",
+    "message": ""
+  }
+   */
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
+  /*
+  {
+    "status": "",
+    "message": "",
+    "data": {
+      "userId": "",
+      "accessToken: "",
+      "refreshToken: ""
+    }
+  }
+  */
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
