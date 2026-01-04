@@ -5,6 +5,8 @@ import {
   Param,
   ParseIntPipe,
   Body,
+  Put,
+  Delete,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateAddressDto } from './dto/create-address.dto';
@@ -40,11 +42,12 @@ export class UsersController {
     "message": ""
   }
   */
-  @Post(':id/addresses')
+  @Post('addresses')
   async createAddress(
     @Param('id', ParseIntPipe) userId: number,
     @Body() dto: CreateAddressDto,
   ) {
+    // Protected by JWT, get userId from JWT
     await this.usersService.createAddress(userId, dto);
 
     return {
@@ -63,12 +66,25 @@ export class UsersController {
     }
   }
   */
-  @Get(':id/addresses')
-  async getAddressesByUserId(@Param('id', ParseIntPipe) userId: number) {
+  @Get('addresses')
+  async getAddresses(@Param('id', ParseIntPipe) userId: number) {
+    // Protected by JWT get userId from JWT
     return {
       status: 'success',
       message: 'Addresses fetched successfully',
       data: await this.usersService.getAddressesByUserId(userId),
     };
+  }
+  
+  @Put('addresses/:id')
+  updateAddress() {
+    // Protected by JWT
+    // Update selected address
+  }
+  
+  @Delete('addresses/:id')
+  deleteAddress() {
+    // Protected by JWT
+    // Delete selected address
   }
 }

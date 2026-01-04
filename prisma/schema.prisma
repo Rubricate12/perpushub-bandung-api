@@ -1,5 +1,5 @@
 generator client {
-  provider   = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -120,24 +120,40 @@ model BookCopy {
 }
 
 model LoanRequest {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  bookId    Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            Int               @id @default(autoincrement())
+  userId        Int
+  bookId        Int
+  libraryId     Int
+  recipientName String
+  phoneNumber   String
+  addressLine   String
+  city          String
+  province      String
+  postalCode    String
+  dueDate       DateTime
+  status        LoanRequestStatus
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   user User @relation(fields: [userId], references: [id])
   book Book @relation(fields: [bookId], references: [id])
 }
 
 model Loan {
-  id         Int       @id @default(autoincrement())
-  userId     Int
-  bookCopyId Int
-  dueDate    DateTime
-  returnedAt DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id            Int        @id @default(autoincrement())
+  userId        Int
+  bookCopyId    Int
+  recipientName String
+  phoneNumber   String
+  addressLine   String
+  city          String
+  province      String
+  postalCode    String
+  dueDate       DateTime
+  returnedAt    DateTime?
+  status        LoanStatus
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   user     User     @relation(fields: [userId], references: [id])
   bookCopy BookCopy @relation(fields: [bookCopyId], references: [id])
@@ -150,12 +166,15 @@ enum BookStatus {
   DAMAGED
 }
 
+enum LoanRequestStatus {
+  DRAFT
+  PENDING
+  REJECTED
+}
+
 enum LoanStatus {
-  ORDERED
-  SHIPPED
-  DELIVERED
-  OVERDUE
-  RETURN_IN_TRANSIT
+  PROCESSING
+  IN_DELIVERY
+  BORROWED
   RETURNED
-  LOST
 }
