@@ -123,15 +123,17 @@ model LoanRequest {
   id            Int               @id @default(autoincrement())
   userId        Int
   bookId        Int
-  libraryId     Int
-  recipientName String
-  phoneNumber   String
-  addressLine   String
-  city          String
-  province      String
-  postalCode    String
-  dueDate       DateTime
-  status        LoanRequestStatus
+
+  libraryId     Int?
+  recipientName String?
+  phoneNumber   String?
+  addressLine   String?
+  city          String?
+  province      String?
+  postalCode    String?
+  dueDate       DateTime?
+
+  status        LoanRequestStatus @default(DRAFT)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
@@ -170,6 +172,7 @@ enum LoanRequestStatus {
   DRAFT
   PENDING
   REJECTED
+  APPROVED
 }
 
 enum LoanStatus {

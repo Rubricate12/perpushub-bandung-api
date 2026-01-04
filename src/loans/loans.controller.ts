@@ -1,39 +1,47 @@
-import { Controller, Post, Body, UseGuards, Get } from '@nestjs/common';
+import { 
+  Controller, 
+  Post, 
+  Body, 
+  UseGuards, 
+  Get, 
+  Req, 
+  Param, 
+  ParseIntPipe 
+} from '@nestjs/common';
 import { LoansService } from './loans.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { LoanStatus } from '@prisma/client';
 
 @Controller('loans')
 @UseGuards(JwtAuthGuard)
 export class LoansController {
   constructor(private service: LoansService) {}
 
-  // Move to loan-requests
-  // @Post('approve')
-  // approve(
-  //   @Body('loanRequestId') loanRequestId: number,
-  //   @Body('dueDate') dueDate: string,
-  // ) {
-  //   return this.service.approve(loanRequestId, new Date(dueDate));
-  // }
-
   @Get('in-delivery')
-  getInDelivery() {
-    // Return entry with both PROCESSING and IN_DELIVERY status
+  getInDelivery(@Req() req: any) {
+    return this.service.getUserLoans(req.user.userId, [
+      LoanStatus.PROCESSING, 
+      LoanStatus.IN_DELIVERY
+    ]);
   }
 
   @Get('borrowed')
-  getBorrowed() {
-    // Return entry with BORROWED status
+  getBorrowed(@Req() req: any) {
+    return this.service.getUserLoans(req.user.userId, [
+      LoanStatus.BORROWED
+    ]);
   }
 
   @Get('history')
-  getHistory() {
-    // Return entry with RETURNED status
+  getHistory(@Req() req: any) {
+    return this.service.getUserLoans(req.user.userId, [
+      LoanStatus.RETURNED
+    ]);
   }
 
   // Move :id to path
   @Post(':id/return')
-  returnBook() {
+  returnBook(@Param('id', ParseIntPipe) loanId: number) {
     return this.service.returnBook(loanId);
   }
 }

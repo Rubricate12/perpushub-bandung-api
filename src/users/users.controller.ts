@@ -2,53 +2,39 @@ import {
   Controller,
   Get,
   Post,
-  Param,
-  ParseIntPipe,
-  Body,
   Put,
   Delete,
+  Param,
+  Body,
+  UseGuards,
+  Req,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateAddressDto } from './dto/create-address.dto';
+import { UpdateAddressDto } from './dto/update-address.dto';
+import { JwtAuthGuard } from '../auth/jwt.guard';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  /*
-  {
-    "status": "",
-    "message": "",
-    "data": {
-      "id": "",
-      "username": "",
-      "fullName": "",
-      "email": ""
-    }
-  }
-  */
+  // ambil user profile by id
   @Get(':id')
   async getById(@Param('id', ParseIntPipe) id: number) {
+    const user = await this.usersService.getById(id);
     return {
       status: 'success',
       message: 'User fetched successfully',
-      data: await this.usersService.getById(id),
+      data: user,
     };
   }
-
-  /*
-  {
-    "status": "",
-    "message": ""
-  }
-  */
+  //pake jwt guard karena butuh userId dari token
+  @UseGuards(JwtAuthGuard)
   @Post('addresses')
-  async createAddress(
-    @Param('id', ParseIntPipe) userId: number,
-    @Body() dto: CreateAddressDto,
-  ) {
-    // Protected by JWT, get userId from JWT
-    await this.usersService.createAddress(userId, dto);
+  async createAddress(@Req() req: any, @Body() dto: CreateAddressDto) {
+    // ambil userId dari token
+    await this.usersService.createAddress(req.user.userId, dto);
 
     return {
       status: 'success',
@@ -56,35 +42,48 @@ export class UsersController {
     };
   }
 
-  /*
-  {
-    "status": "",
-    "message": "",
-    "data": {
-      "userId": "",
-      "addresses": []
-    }
-  }
-  */
+  @UseGuards(JwtAuthGuard)
   @Get('addresses')
-  async getAddresses(@Param('id', ParseIntPipe) userId: number) {
-    // Protected by JWT get userId from JWT
+  async getAddresses(@Req() req: any) {
+    const addresses = await this.usersService.getAddressesByUserId(req.user.userId);
+    
     return {
       status: 'success',
       message: 'Addresses fetched successfully',
-      data: await this.usersService.getAddressesByUserId(userId),
+      data: {
+        userId: req.user.userId,
+        addresses: addresses,
+      },
     };
   }
-  
-  @Put('addresses/:id')
-  updateAddress() {
-    // Protected by JWT
-    // Update selected address
+
+  @UseGuards(JwtAuthGuard)
+  @Put('addresses/:addressId')
+  async updateAddress(
+    @Req() req: any,
+    @Param('addressId', ParseIntPipe) addressId: number,
+    @Body() dto: UpdateAddressDto,
+  ) {
+    //pass userId, addressId, dan dto ke service
+    await this.usersService.updateAddress(req.user.userId, addressId, dto);
+
+    return {
+      status: 'success',
+      message: 'Address updated successfully',
+    };
   }
-  
-  @Delete('addresses/:id')
-  deleteAddress() {
-    // Protected by JWT
-    // Delete selected address
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('addresses/:addressId')
+  async deleteAddress(
+    @Req() req: any,
+    @Param('addressId', ParseIntPipe) addressId: number,
+  ) {
+    await this.usersService.deleteAddress(req.user.userId, addressId);
+
+    return {
+      status: 'success',
+      message: 'Address deleted successfully',
+    };
   }
 }
