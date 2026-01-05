@@ -21,16 +21,6 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // Get user profile by ID
-  @Get(':id')
-  async getById(@Param('id', ParseIntPipe) id: number) {
-    const user = await this.usersService.getById(id);
-    return {
-      status: 'success',
-      message: 'User fetched successfully',
-      data: user,
-    };
-  }
   // Use JWT guard because userId is needed from the token
   @UseGuards(JwtAuthGuard)
   @Post('addresses')
@@ -87,6 +77,17 @@ export class UsersController {
     return {
       status: 'success',
       message: 'Address deleted successfully',
+    };
+  }
+
+  // Get user profile by ID
+  @Get(':id')
+  async getById(@Param('id', ParseIntPipe) id: number) {
+    const user = await this.usersService.getById(id);
+    return {
+      status: 'success',
+      message: 'User fetched successfully',
+      data: user,
     };
   }
 }

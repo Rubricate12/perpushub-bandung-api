@@ -18,6 +18,7 @@ model User {
   addresses    Address[]
   loanRequests LoanRequest[]
   loans        Loan[]
+  hashedRefreshToken String?
 }
 
 model Address {
