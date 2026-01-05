@@ -1,4 +1,5 @@
-// src/auth/auth.controller.ts
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access */
+
 import {
   Body,
   Controller,
@@ -41,8 +42,8 @@ export class AuthController {
   @Post('refresh')
   async refresh(@Req() req: any) {
     return this.authService.refreshTokens(
-      req.user['sub'], 
-      req.user['refreshToken']
+      req.user['sub'],
+      req.user['refreshToken'],
     );
   }
 }

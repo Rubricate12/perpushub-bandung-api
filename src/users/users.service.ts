@@ -31,7 +31,7 @@ export class UsersService {
   async createAddress(userId: number, dto: CreateAddressDto) {
     return this.prisma.address.create({
       data: {
-        userId, 
+        userId,
         label: dto.label,
         recipientName: dto.recipientName,
         phoneNumber: dto.phoneNumber,

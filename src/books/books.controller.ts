@@ -33,11 +33,11 @@ export class BooksController {
       message: 'Book copy created',
     };
   }
-  
+
   @Get()
   async getBooks(@Query('q') q?: string) {
-    const books = q 
-      ? await this.booksService.search(q) 
+    const books = q
+      ? await this.booksService.search(q)
       : await this.booksService.findAll();
 
     return {

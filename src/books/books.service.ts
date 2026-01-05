@@ -118,14 +118,14 @@ export class BooksService {
       },
     });
   }
-  
+
   async search(query: string) {
     return this.prisma.book.findMany({
       where: {
         OR: [
           // 1. Search by Title
-          { title: { contains: query } }, 
-          
+          { title: { contains: query } },
+
           // 2. Search by ISBN
           { isbn13: { contains: query } },
 
@@ -141,7 +141,7 @@ export class BooksService {
           },
         ],
       },
-      
+
       select: {
         id: true,
         title: true,
@@ -152,7 +152,7 @@ export class BooksService {
           },
         },
       },
-      take: 20, 
+      take: 20,
     });
   }
 

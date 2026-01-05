@@ -16,7 +16,7 @@ export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
-    private readonly config: ConfigService, 
+    private readonly config: ConfigService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -55,21 +55,22 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-    if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials');
+    if (!isPasswordValid)
+      throw new UnauthorizedException('Invalid credentials');
 
     // 1. Generate Tokens
     const tokens = await this.getTokens(user.id, user.email);
-    
+
     // 2. Save Refresh Token Hash to DB
-    await this.updateRtHash(user.id, tokens.refresh_token);
+    await this.updateRtHash(user.id, tokens.refreshToken);
 
     return {
       status: 'success',
       message: 'Login successful',
       data: {
         userId: user.id,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token, // <--- Send this to client
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
       },
     };
   }
@@ -84,7 +85,7 @@ export class AuthService {
       },
       data: { hashedRefreshToken: null },
     });
-    
+
     return { status: 'success', message: 'Logged out successfully' };
   }
 
@@ -93,7 +94,7 @@ export class AuthService {
       where: { id: userId },
     });
 
-    if (!user || !user.hashedRefreshToken) 
+    if (!user || !user.hashedRefreshToken)
       throw new ForbiddenException('Access Denied');
 
     // Compare the Refresh Token sent by client vs. the Hash in DB
@@ -102,12 +103,12 @@ export class AuthService {
 
     // If valid, generate NEW tokens (Rotation)
     const tokens = await this.getTokens(user.id, user.email);
-    await this.updateRtHash(user.id, tokens.refresh_token);
+    await this.updateRtHash(user.id, tokens.refreshToken);
 
     return {
       status: 'success',
       message: 'Tokens refreshed successfully',
-      data: tokens
+      data: tokens,
     };
   }
 
@@ -116,22 +117,24 @@ export class AuthService {
       // Access Token (Short Life)
       this.jwtService.signAsync(
         { sub: userId, email },
-        { 
-          secret: this.config.get<string>('JWT_SECRET'), 
-          expiresIn: '15m' 
+        {
+          secret: this.config.get<string>('JWT_SECRET') || 'SECRET_KEY_ACCESS',
+          expiresIn: '1m',
         },
       ),
       // Refresh Token (Long Life)
       this.jwtService.signAsync(
         { sub: userId, email },
-        { 
-          secret: this.config.get<string>('JWT_REFRESH_SECRET'), 
-          expiresIn: '7d' 
+        {
+          secret:
+            this.config.get<string>('JWT_REFRESH_SECRET') ||
+            'SECRET_KEY_REFRESH',
+          expiresIn: '7d',
         },
       ),
     ]);
 
-    return { access_token: at, refresh_token: rt };
+    return { accessToken: at, refreshToken: rt };
   }
 
   async updateRtHash(userId: number, rt: string) {
