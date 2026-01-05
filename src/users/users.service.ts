@@ -31,8 +31,14 @@ export class UsersService {
   async createAddress(userId: number, dto: CreateAddressDto) {
     return this.prisma.address.create({
       data: {
-        ...dto,
-        userId, // Link to user
+        userId, 
+        label: dto.label,
+        recipientName: dto.recipientName,
+        phoneNumber: dto.phoneNumber,
+        addressLine: dto.addressLine,
+        city: dto.city,
+        province: dto.province,
+        postalCode: dto.postalCode,
       },
     });
   }

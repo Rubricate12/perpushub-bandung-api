@@ -88,4 +88,15 @@ export class UsersController {
       message: 'Address deleted successfully',
     };
   }
+
+  // Get user profile by ID
+  @Get(':id')
+  async getById(@Param('id', ParseIntPipe) id: number) {
+    const user = await this.usersService.getById(id);
+    return {
+      status: 'success',
+      message: 'User fetched successfully',
+      data: user,
+    };
+  }
 }

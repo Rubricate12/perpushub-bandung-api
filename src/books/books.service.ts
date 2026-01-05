@@ -16,7 +16,7 @@ export class BooksService {
       throw new BadRequestException('ISBN is required');
     }
 
-    // Check the book if it already exists
+    // cek bukunya udah ada didb belom
     const existing = await this.prisma.book.findFirst({
       where: {
         OR: [{ isbn10: isbn }, { isbn13: isbn }],
@@ -27,7 +27,7 @@ export class BooksService {
       throw new BadRequestException('Book already exists');
     }
 
-    // Fetch from Google Books
+    // ambil dari google books
     const res = await fetch(
       `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`,
     );
@@ -39,7 +39,7 @@ export class BooksService {
 
     const volume = json.items[0].volumeInfo;
 
-    // Normalize data
+    // normalisasi data jadi sesuai db kita
     const title = volume.title;
     const description = volume.description ?? '';
     const publisher = volume.publisher ?? '';
@@ -50,21 +50,19 @@ export class BooksService {
     const language = volume.language ?? 'en';
 
     const isbn10 =
-      volume.industryIdentifiers?.find(
-        (i: { type: string }) => i.type === 'ISBN_10',
-      )?.identifier ?? null;
+      volume.industryIdentifiers?.find((i) => i.type === 'ISBN_10')
+        ?.identifier ?? null;
 
     const isbn13 =
-      volume.industryIdentifiers?.find(
-        (i: { type: string }) => i.type === 'ISBN_13',
-      )?.identifier ?? null;
+      volume.industryIdentifiers?.find((i) => i.type === 'ISBN_13')
+        ?.identifier ?? null;
 
     const authors = volume.authors ?? [];
     const categories = volume.categories ?? [];
 
     const coverUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
 
-    // Create all in a transaction
+    // buat semuanya di transaction
     return this.prisma.$transaction(async (tx) => {
       const book = await tx.book.create({
         data: {
@@ -80,7 +78,7 @@ export class BooksService {
         },
       });
 
-      // Authors
+      // buat authors
       for (const name of authors) {
         const author =
           (await tx.author.findFirst({ where: { name } })) ??
@@ -94,7 +92,7 @@ export class BooksService {
         });
       }
 
-      // Categories
+      // buat categories
       for (const name of categories) {
         const category =
           (await tx.category.findFirst({ where: { name } })) ??
@@ -118,6 +116,50 @@ export class BooksService {
         bookId,
         libraryId,
       },
+    });
+  }
+  
+  async search(query: string) {
+    return this.prisma.book.findMany({
+      where: {
+        OR: [
+          // 1. Search by Title
+          { title: { contains: query } }, 
+          
+          // 2. Search by ISBN
+          { isbn13: { contains: query } },
+
+          // 3. Search by Author Name (Advanced Nested Filter)
+          {
+            authors: {
+              some: {
+                author: {
+                  name: { contains: query },
+                },
+              },
+            },
+          },
+        ],
+      },
+      
+      select: {
+        id: true,
+        title: true,
+        coverUrl: true,
+        authors: {
+          select: {
+            author: { select: { name: true } },
+          },
+        },
+      },
+      take: 20, 
+    });
+  }
+
+  async findAll() {
+    return this.prisma.book.findMany({
+      take: 20,
+      orderBy: { createdAt: 'desc' },
     });
   }
 

@@ -5,6 +5,7 @@ import {
   Param,
   ParseIntPipe,
   Body,
+  Query,
 } from '@nestjs/common';
 import { BooksService } from './books.service';
 
@@ -30,6 +31,19 @@ export class BooksController {
     return {
       status: 'success',
       message: 'Book copy created',
+    };
+  }
+  
+  @Get()
+  async getBooks(@Query('q') q?: string) {
+    const books = q 
+      ? await this.booksService.search(q) 
+      : await this.booksService.findAll();
+
+    return {
+      status: 'success',
+      message: q ? 'Books found' : 'All books fetched',
+      data: books,
     };
   }
 
