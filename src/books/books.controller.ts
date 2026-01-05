@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Param, ParseIntPipe, Body } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  ParseIntPipe,
+  Body,
+  Query,
+} from '@nestjs/common';
 import { BooksService } from './books.service';
 
 @Controller('books')
@@ -11,6 +19,19 @@ export class BooksController {
       status: 'success',
       message: 'Book created from ISBN',
       data: await this.booksService.createFromIsbn(isbn),
+    };
+  }
+
+  @Get()
+  async getBooks(@Query('q') q?: string) {
+    const books = q 
+      ? await this.booksService.search(q) 
+      : await this.booksService.findAll();
+
+    return {
+      status: 'success',
+      message: q ? 'Books found' : 'All books fetched',
+      data: books,
     };
   }
 

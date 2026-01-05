@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+
 import {
   Controller,
   Post,
@@ -54,7 +56,11 @@ export class LoanRequestsController {
     @Body('bookCopyId', ParseIntPipe) bookCopyId: number,
     @Body('dueDate') dueDate: string,
   ) {
-    return this.service.approve(id, bookCopyId, dueDate ? new Date(dueDate) : undefined);
+    return this.service.approve(
+      id,
+      bookCopyId,
+      dueDate ? new Date(dueDate) : undefined,
+    );
   }
 
   @Post(':id/reject')

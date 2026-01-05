@@ -4,11 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  LoanRequestStatus,
-  BookStatus,
-  LoanStatus,
-} from '@prisma/client';
+import { LoanRequestStatus, BookStatus, LoanStatus } from '@prisma/client';
 
 @Injectable()
 export class LoanRequestsService {
@@ -34,15 +30,16 @@ export class LoanRequestsService {
     const draft = await this.prisma.loanRequest.findUnique({
       where: { id },
     });
-    //cek draft ada dan milik user
+
+    // Check if the draft exists and is owned by the user
     if (!draft || draft.userId !== userId) {
       throw new NotFoundException('Draft not found');
     }
-    //cek status draft
+    // Check the draft status
     if (draft.status !== LoanRequestStatus.DRAFT) {
       throw new BadRequestException('Loan request is not a draft');
     }
-    //cek address valid dan milik user
+    // Check if the address is valid and belongs to the user
     const address = await this.prisma.address.findUnique({
       where: { id: addressId },
     });
@@ -67,7 +64,7 @@ export class LoanRequestsService {
   }
 
   async getDrafts(userId: number) {
-    // cari banyak yang berstatus draft
+    // Find all drafts
     return this.prisma.loanRequest.findMany({
       where: {
         userId,
@@ -77,15 +74,12 @@ export class LoanRequestsService {
   }
 
   async getSubmitted(userId: number) {
-    //cari banyak yang berstatus pending / rejected
+    // Find all pending or rejected requests
     return this.prisma.loanRequest.findMany({
       where: {
         userId,
         status: {
-          in: [
-            LoanRequestStatus.PENDING,
-            LoanRequestStatus.REJECTED,
-          ],
+          in: [LoanRequestStatus.PENDING, LoanRequestStatus.REJECTED],
         },
       },
     });
@@ -93,7 +87,7 @@ export class LoanRequestsService {
 
   async approve(requestId: number, bookCopyId: number, newDueDate?: Date) {
     return this.prisma.$transaction(async (tx) => {
-      //ambil request
+      // Get the request
       const loanRequest = await tx.loanRequest.findUnique({
         where: { id: requestId },
       });
@@ -106,32 +100,34 @@ export class LoanRequestsService {
         throw new BadRequestException('Only PENDING requests can be approved');
       }
 
-      // validasi buku, copy, dan status
+      // Validate the book, copy, and status
       const copy = await tx.bookCopy.findUnique({
         where: { id: bookCopyId },
       });
 
       if (!copy || copy.bookId !== loanRequest.bookId) {
-        throw new BadRequestException('This copy does not belong to the requested book');
+        throw new BadRequestException(
+          'This copy does not belong to the requested book',
+        );
       }
 
       if (copy.status !== 'AVAILABLE') {
         throw new BadRequestException('This book copy is not available');
       }
 
-      // tentukan due date
+      // Determine the due date
       const finalDueDate = newDueDate || loanRequest.dueDate;
       if (!finalDueDate) {
         throw new BadRequestException('Due date is required');
       }
 
-      // buat record loan
+      // Create a loan record
       const loan = await tx.loan.create({
         data: {
           userId: loanRequest.userId,
           bookCopyId: bookCopyId,
           dueDate: finalDueDate,
-          status: LoanStatus.BORROWED, // perlu processing kah?
+          status: LoanStatus.PROCESSING,
           recipientName: loanRequest.recipientName!,
           phoneNumber: loanRequest.phoneNumber!,
           addressLine: loanRequest.addressLine!,
@@ -140,16 +136,16 @@ export class LoanRequestsService {
           postalCode: loanRequest.postalCode!,
         },
       });
-      // update status book copy
+      // Update the book copy status
       await tx.bookCopy.update({
         where: { id: bookCopyId },
         data: { status: BookStatus.BORROWED },
       });
 
-      // update status loan request
+      // Update the loan request status
       await tx.loanRequest.update({
-         where: { id: requestId },
-         data: { status: 'APPROVED' as any }, // temporary
+        where: { id: requestId },
+        data: { status: LoanRequestStatus.APPROVED },
       });
 
       return loan;

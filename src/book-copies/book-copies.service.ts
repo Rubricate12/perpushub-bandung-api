@@ -6,12 +6,8 @@ import { BookStatus } from '@prisma/client';
 export class BookCopiesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(
-    bookId: number,
-    libraryId: number,
-    status?: string,
-  ) {
-    // cari book
+  async create(bookId: number, libraryId: number, status?: string) {
+    // Find book
     const book = await this.prisma.book.findUnique({
       where: { id: bookId },
     });
@@ -19,7 +15,7 @@ export class BookCopiesService {
       throw new BadRequestException('Book not found');
     }
 
-    // cari library
+    // Find library
     const library = await this.prisma.library.findUnique({
       where: { id: libraryId },
     });
@@ -27,7 +23,7 @@ export class BookCopiesService {
       throw new BadRequestException('Library not found');
     }
 
-    // cari status
+    // Find status
     const finalStatus =
       status && status in BookStatus
         ? (status as BookStatus)

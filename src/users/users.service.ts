@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
@@ -7,7 +11,7 @@ import { UpdateAddressDto } from './dto/update-address.dto';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  // dapat user pake id
+  // Get user by ID
   async getById(id: number) {
     const user = await this.prisma.user.findUnique({
       where: { id },
@@ -23,26 +27,36 @@ export class UsersService {
     return user;
   }
 
-  // buat address baru
+  // Create a new address
   async createAddress(userId: number, dto: CreateAddressDto) {
     return this.prisma.address.create({
       data: {
-        ...dto,
-        userId, // link ke user
+        userId, 
+        label: dto.label,
+        recipientName: dto.recipientName,
+        phoneNumber: dto.phoneNumber,
+        addressLine: dto.addressLine,
+        city: dto.city,
+        province: dto.province,
+        postalCode: dto.postalCode,
       },
     });
   }
 
-  // ambil addresses by userId
+  // Get addresses by user ID
   async getAddressesByUserId(userId: number) {
     return this.prisma.address.findMany({
       where: { userId },
     });
   }
 
-  // update address
-  async updateAddress(userId: number, addressId: number, dto: UpdateAddressDto) {
-    // cek ownership dulu sebelum update
+  // Update address
+  async updateAddress(
+    userId: number,
+    addressId: number,
+    dto: UpdateAddressDto,
+  ) {
+    // Check ownership before updating
     const address = await this.prisma.address.findUnique({
       where: { id: addressId },
     });
@@ -58,9 +72,9 @@ export class UsersService {
     });
   }
 
-  // hapus address
+  // Delete address
   async deleteAddress(userId: number, addressId: number) {
-    // cek ownership dulu sebelum hapus
+    // Check ownership before deleting
     const address = await this.prisma.address.findUnique({
       where: { id: addressId },
     });

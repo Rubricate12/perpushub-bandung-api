@@ -104,11 +104,55 @@ export class BooksService {
     });
   }
 
+  async search(query: string) {
+    return this.prisma.book.findMany({
+      where: {
+        OR: [
+          // 1. Search by Title
+          { title: { contains: query } }, 
+          
+          // 2. Search by ISBN
+          { isbn13: { contains: query } },
+
+          // 3. Search by Author Name (Advanced Nested Filter)
+          {
+            authors: {
+              some: {
+                author: {
+                  name: { contains: query },
+                },
+              },
+            },
+          },
+        ],
+      },
+      
+      select: {
+        id: true,
+        title: true,
+        coverUrl: true,
+        authors: {
+          select: {
+            author: { select: { name: true } },
+          },
+        },
+      },
+      take: 20, 
+    });
+  }
+
+  async findAll() {
+    return this.prisma.book.findMany({
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async getTopBooks() {
     return this.prisma.book.findMany({
       take: 10,
       orderBy: {
-        loans: {
+        loanRequests: {
           _count: 'desc',
         },
       },
