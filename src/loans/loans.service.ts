@@ -1,75 +1,64 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BookStatus } from '@prisma/client';
+import { LoanStatus, BookStatus } from '@prisma/client';
 
 @Injectable()
 export class LoansService {
   constructor(private prisma: PrismaService) {}
 
-  async approve(loanRequestId: number, dueDate: Date) {
-    const request = await this.prisma.loanRequest.findUnique({
-      where: { id: loanRequestId },
-      include: { book: true },
-    });
-
-    if (!request) {
-      throw new BadRequestException('Loan request not found');
-    }
-
-    const copy = await this.prisma.bookCopy.findFirst({
+  // method reusable untuk mendapatkan loans user berdasarkan status 
+  async getUserLoans(userId: number, statuses: LoanStatus[]) {
+    return this.prisma.loan.findMany({
       where: {
-        bookId: request.bookId,
-        status: BookStatus.AVAILABLE,
+        userId: userId,
+        status: { in: statuses }, // match status yang dikasih
       },
-    });
-
-    if (!copy) {
-      throw new BadRequestException('No available copies');
-    }
-
-    return this.prisma.$transaction(async (tx) => {
-      await tx.bookCopy.update({
-        where: { id: copy.id },
-        data: { status: BookStatus.BORROWED },
-      });
-
-      const loan = await tx.loan.create({
-        data: {
-          userId: request.userId,
-          bookCopyId: copy.id,
-          dueDate,
+      include: {
+        bookCopy: {
+          include: {
+            book: true, // include detail book
+          },
         },
-      });
-
-      await tx.loanRequest.delete({
-        where: { id: loanRequestId },
-      });
-
-      return loan;
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
   }
 
   async returnBook(loanId: number) {
-    const loan = await this.prisma.loan.findUnique({
-      where: { id: loanId },
-    });
-
-    if (!loan || loan.returnedAt) {
-      throw new BadRequestException('Invalid loan');
-    }
-
     return this.prisma.$transaction(async (tx) => {
-      await tx.loan.update({
+      // cari loan
+      const loan = await tx.loan.findUnique({
         where: { id: loanId },
-        data: { returnedAt: new Date() },
       });
 
+      if (!loan) {
+        throw new NotFoundException('Loan not found');
+      }
+
+      if (loan.status === LoanStatus.RETURNED) {
+        throw new BadRequestException('Loan is already returned');
+      }
+
+      // update loan status ke returned
+      const updatedLoan = await tx.loan.update({
+        where: { id: loanId },
+        data: {
+          status: LoanStatus.RETURNED,
+          returnedAt: new Date(),
+        },
+      });
+
+      // set book copy status ke available
       await tx.bookCopy.update({
         where: { id: loan.bookCopyId },
-        data: { status: BookStatus.AVAILABLE },
+        data: {
+          status: BookStatus.AVAILABLE,
+        },
       });
 
-      return { message: 'Book returned successfully' };
+      return updatedLoan;
     });
   }
 }
