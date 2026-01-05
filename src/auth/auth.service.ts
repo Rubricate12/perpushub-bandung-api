@@ -16,9 +16,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
-  // --------------------
-  // REGISTER
-  // --------------------
+  // Register
   async register(dto: RegisterDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -48,9 +46,7 @@ export class AuthService {
     };
   }
 
-  // --------------------
-  // LOGIN
-  // --------------------
+  // Login
   async login(dto: LoginDto) {
     if (!dto?.email || !dto?.password) {
       throw new UnauthorizedException('Email and password required');
@@ -64,10 +60,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(
-      dto.password,
-      user.password,
-    );
+    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');

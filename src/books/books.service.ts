@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call */
+
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -10,7 +16,7 @@ export class BooksService {
       throw new BadRequestException('ISBN is required');
     }
 
-    // cek bukunya udah ada didb belom
+    // Check the book if it already exists
     const existing = await this.prisma.book.findFirst({
       where: {
         OR: [{ isbn10: isbn }, { isbn13: isbn }],
@@ -21,7 +27,7 @@ export class BooksService {
       throw new BadRequestException('Book already exists');
     }
 
-    // ambil dari google books
+    // Fetch from Google Books
     const res = await fetch(
       `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`,
     );
@@ -33,7 +39,7 @@ export class BooksService {
 
     const volume = json.items[0].volumeInfo;
 
-    // normalisasi data jadi sesuai db kita
+    // Normalize data
     const title = volume.title;
     const description = volume.description ?? '';
     const publisher = volume.publisher ?? '';
@@ -44,19 +50,21 @@ export class BooksService {
     const language = volume.language ?? 'en';
 
     const isbn10 =
-      volume.industryIdentifiers?.find((i) => i.type === 'ISBN_10')
-        ?.identifier ?? null;
+      volume.industryIdentifiers?.find(
+        (i: { type: string }) => i.type === 'ISBN_10',
+      )?.identifier ?? null;
 
     const isbn13 =
-      volume.industryIdentifiers?.find((i) => i.type === 'ISBN_13')
-        ?.identifier ?? null;
+      volume.industryIdentifiers?.find(
+        (i: { type: string }) => i.type === 'ISBN_13',
+      )?.identifier ?? null;
 
     const authors = volume.authors ?? [];
     const categories = volume.categories ?? [];
 
     const coverUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
 
-    // buat semuanya di transaction
+    // Create all in a transaction
     return this.prisma.$transaction(async (tx) => {
       const book = await tx.book.create({
         data: {
@@ -72,7 +80,7 @@ export class BooksService {
         },
       });
 
-      // buat authors
+      // Authors
       for (const name of authors) {
         const author =
           (await tx.author.findFirst({ where: { name } })) ??
@@ -86,7 +94,7 @@ export class BooksService {
         });
       }
 
-      // buat categories
+      // Categories
       for (const name of categories) {
         const category =
           (await tx.category.findFirst({ where: { name } })) ??
@@ -108,7 +116,7 @@ export class BooksService {
     return this.prisma.book.findMany({
       take: 10,
       orderBy: {
-        loans: {
+        loanRequests: {
           _count: 'desc',
         },
       },

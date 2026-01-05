@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoanStatus, BookStatus } from '@prisma/client';
 
@@ -6,17 +10,17 @@ import { LoanStatus, BookStatus } from '@prisma/client';
 export class LoansService {
   constructor(private prisma: PrismaService) {}
 
-  // method reusable untuk mendapatkan loans user berdasarkan status 
+  // Reusable method to get user loans based on status
   async getUserLoans(userId: number, statuses: LoanStatus[]) {
     return this.prisma.loan.findMany({
       where: {
         userId: userId,
-        status: { in: statuses }, // match status yang dikasih
+        status: { in: statuses }, // Match the given status
       },
       include: {
         bookCopy: {
           include: {
-            book: true, // include detail book
+            book: true, // Include book details
           },
         },
       },
@@ -28,7 +32,7 @@ export class LoansService {
 
   async returnBook(loanId: number) {
     return this.prisma.$transaction(async (tx) => {
-      // cari loan
+      // Find the loan
       const loan = await tx.loan.findUnique({
         where: { id: loanId },
       });
@@ -41,7 +45,7 @@ export class LoansService {
         throw new BadRequestException('Loan is already returned');
       }
 
-      // update loan status ke returned
+      // Update loan status to returned
       const updatedLoan = await tx.loan.update({
         where: { id: loanId },
         data: {
@@ -50,7 +54,7 @@ export class LoansService {
         },
       });
 
-      // set book copy status ke available
+      // Set book copy status to available
       await tx.bookCopy.update({
         where: { id: loan.bookCopyId },
         data: {

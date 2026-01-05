@@ -1,5 +1,5 @@
 export class CreateAddressDto {
-  title: string;
+  label: string;
   recipientName: string;
   phoneNumber: string;
   addressLine: string;

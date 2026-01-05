@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+
 import {
   Controller,
   Get,
@@ -19,7 +21,7 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // ambil user profile by id
+  // Get user profile by ID
   @Get(':id')
   async getById(@Param('id', ParseIntPipe) id: number) {
     const user = await this.usersService.getById(id);
@@ -29,11 +31,11 @@ export class UsersController {
       data: user,
     };
   }
-  //pake jwt guard karena butuh userId dari token
+  // Use JWT guard because userId is needed from the token
   @UseGuards(JwtAuthGuard)
   @Post('addresses')
   async createAddress(@Req() req: any, @Body() dto: CreateAddressDto) {
-    // ambil userId dari token
+    // Get userId from the token
     await this.usersService.createAddress(req.user.userId, dto);
 
     return {
@@ -45,13 +47,14 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Get('addresses')
   async getAddresses(@Req() req: any) {
-    const addresses = await this.usersService.getAddressesByUserId(req.user.userId);
-    
+    const addresses = await this.usersService.getAddressesByUserId(
+      req.user.userId,
+    );
+
     return {
       status: 'success',
       message: 'Addresses fetched successfully',
       data: {
-        userId: req.user.userId,
         addresses: addresses,
       },
     };
@@ -64,7 +67,7 @@ export class UsersController {
     @Param('addressId', ParseIntPipe) addressId: number,
     @Body() dto: UpdateAddressDto,
   ) {
-    //pass userId, addressId, dan dto ke service
+    // Pass userId, addressId, and DTO to the service
     await this.usersService.updateAddress(req.user.userId, addressId, dto);
 
     return {
