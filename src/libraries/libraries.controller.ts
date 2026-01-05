@@ -1,9 +1,22 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+} from '@nestjs/common';
 import { LibrariesService } from './libraries.service';
+import { CreateLibraryDto } from './dto/create-library.dto';
 
 @Controller('libraries')
 export class LibrariesController {
   constructor(private readonly librariesService: LibrariesService) {}
+
+  @Post()
+  async create(@Body() dto: CreateLibraryDto) {
+    return this.librariesService.create(dto);
+  }
 
   /*
   {

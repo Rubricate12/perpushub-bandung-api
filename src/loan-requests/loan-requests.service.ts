@@ -11,13 +11,34 @@ export class LoanRequestsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createDraft(userId: number, bookId: number) {
-    return this.prisma.loanRequest.create({
+    await this.prisma.loanRequest.create({
       data: {
         userId,
         bookId,
         status: LoanRequestStatus.DRAFT,
       },
     });
+
+    return {
+      status: 'success',
+      message: 'Success',
+    };
+  }
+
+  async delete(userId: number, id: number) {
+    const draft = await this.prisma.loanRequest.findUnique({
+      where: { id },
+    });
+    if (!draft || draft.userId !== userId) {
+      throw new NotFoundException('Draft not found');
+    }
+    await this.prisma.loanRequest.delete({
+      where: { id },
+    });
+    return {
+      status: 'success',
+      message: 'Success',
+    };
   }
 
   async submitDraft(
@@ -47,7 +68,7 @@ export class LoanRequestsService {
       throw new BadRequestException('Invalid address');
     }
 
-    return this.prisma.loanRequest.update({
+    await this.prisma.loanRequest.update({
       where: { id },
       data: {
         libraryId,
@@ -61,32 +82,113 @@ export class LoanRequestsService {
         status: LoanRequestStatus.PENDING,
       },
     });
+
+    return {
+      status: 'success',
+      message: 'Success',
+    };
   }
 
   async getDrafts(userId: number) {
     // Find all drafts
-    return this.prisma.loanRequest.findMany({
+    const drafts = await this.prisma.loanRequest.findMany({
       where: {
         userId,
         status: LoanRequestStatus.DRAFT,
       },
+      select: {
+        id: true,
+        userId: true,
+        book: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            coverUrl: true,
+            authors: {
+              select: {
+                author: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        status: true,
+      },
     });
+
+    return {
+      status: 'success',
+      message: 'Success',
+      data: drafts.map((draft) => ({
+        ...draft,
+        book: {
+          ...draft.book,
+          authors: draft.book.authors.map((a) => ({
+            id: a.author.id,
+            name: a.author.name,
+          })),
+        },
+      })),
+    };
   }
 
   async getSubmitted(userId: number) {
     // Find all pending or rejected requests
-    return this.prisma.loanRequest.findMany({
+    const submitted = await this.prisma.loanRequest.findMany({
       where: {
         userId,
         status: {
           in: [LoanRequestStatus.PENDING, LoanRequestStatus.REJECTED],
         },
       },
+      select: {
+        id: true,
+        userId: true,
+        book: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            coverUrl: true,
+            authors: {
+              select: {
+                author: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        status: true,
+      },
     });
+
+    return {
+      status: 'success',
+      message: 'Success',
+      data: submitted.map((s) => ({
+        ...s,
+        book: {
+          ...s.book,
+          authors: s.book.authors.map((a) => ({
+            id: a.author.id,
+            name: a.author.name,
+          })),
+        },
+      })),
+    };
   }
 
   async approve(requestId: number, bookCopyId: number, newDueDate?: Date) {
-    return this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       // Get the request
       const loanRequest = await tx.loanRequest.findUnique({
         where: { id: requestId },
@@ -150,14 +252,24 @@ export class LoanRequestsService {
 
       return loan;
     });
+
+    return {
+      status: 'success',
+      message: 'Success',
+    };
   }
 
   async reject(id: number) {
-    return this.prisma.loanRequest.update({
+    await this.prisma.loanRequest.update({
       where: { id },
       data: {
         status: LoanRequestStatus.REJECTED,
       },
     });
+
+    return {
+      status: 'success',
+      message: 'Success',
+    };
   }
 }

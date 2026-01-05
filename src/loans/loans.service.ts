@@ -1,10 +1,10 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { LoanStatus, BookStatus } from '@prisma/client';
+import { BookStatus, LoanStatus } from '@prisma/client';
 
 @Injectable()
 export class LoansService {
@@ -30,8 +30,67 @@ export class LoansService {
     });
   }
 
+  async receiveBook(userId: number, loanId: number) {
+    await this.prisma.$transaction(async (tx) => {
+      // Find the loan
+      const loan = await tx.loan.findUnique({
+        where: { id: loanId, userId: userId },
+      });
+
+      if (!loan) {
+        throw new NotFoundException('Loan not found');
+      }
+
+      if (loan.status !== LoanStatus.IN_DELIVERY) {
+        throw new BadRequestException('Loan is not in delivery status');
+      }
+
+      // Update loan status to borrowed
+      await tx.loan.update({
+        where: { id: loanId },
+        data: {
+          status: LoanStatus.BORROWED,
+        },
+      });
+    });
+
+    return {
+      status: 'success',
+      message: 'Success',
+    };
+  }
+
+  async deliverBook(loanId: number) {
+    await this.prisma.$transaction(async (tx) => {
+      // Find the loan
+      const loan = await tx.loan.findUnique({
+        where: { id: loanId },
+      });
+
+      if (!loan) {
+        throw new NotFoundException('Loan not found');
+      }
+
+      if (loan.status === LoanStatus.IN_DELIVERY) {
+        throw new BadRequestException('Loan is already delivered');
+      }
+
+      await tx.loan.update({
+        where: { id: loanId },
+        data: {
+          status: LoanStatus.IN_DELIVERY,
+        },
+      });
+    });
+
+    return {
+      status: 'success',
+      message: 'Success',
+    };
+  }
+
   async returnBook(loanId: number) {
-    return this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       // Find the loan
       const loan = await tx.loan.findUnique({
         where: { id: loanId },
@@ -64,5 +123,10 @@ export class LoansService {
 
       return updatedLoan;
     });
+
+    return {
+      status: 'success',
+      message: 'Success',
+    };
   }
 }

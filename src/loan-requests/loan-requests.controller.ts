@@ -9,21 +9,29 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Delete,
 } from '@nestjs/common';
 import { LoanRequestsService } from './loan-requests.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 
 @Controller('loan-requests')
-@UseGuards(JwtAuthGuard)
 export class LoanRequestsController {
   constructor(private service: LoanRequestsService) {}
 
-  @Post('draft')
+  @UseGuards(JwtAuthGuard)
+  @Post()
   createDraft(@Req() req: any, @Body('bookId') bookId: number) {
     return this.service.createDraft(req.user.userId, bookId);
   }
 
-  @Post('draft/:id/submit')
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  delete(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    return this.service.delete(req.user.userId, id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/submit')
   submitDraft(
     @Req() req: any,
     @Param('id', ParseIntPipe) id: number,
@@ -40,11 +48,13 @@ export class LoanRequestsController {
     );
   }
 
-  @Get('draft')
+  @UseGuards(JwtAuthGuard)
+  @Get('drafts')
   getDrafts(@Req() req: any) {
     return this.service.getDrafts(req.user.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('submitted')
   getSubmitted(@Req() req: any) {
     return this.service.getSubmitted(req.user.userId);
