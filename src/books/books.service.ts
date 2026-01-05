@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call */
+
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -104,6 +110,15 @@ export class BooksService {
     });
   }
 
+  async createCopy(bookId: number, libraryId: number) {
+    await this.prisma.bookCopy.create({
+      data: {
+        bookId,
+        libraryId,
+      },
+    });
+  }
+  
   async search(query: string) {
     return this.prisma.book.findMany({
       where: {
@@ -149,7 +164,7 @@ export class BooksService {
   }
 
   async getTopBooks() {
-    return this.prisma.book.findMany({
+    const books = await this.prisma.book.findMany({
       take: 10,
       orderBy: {
         loanRequests: {
@@ -173,10 +188,14 @@ export class BooksService {
         },
       },
     });
+    return books.map((book) => ({
+      ...book,
+      authors: book.authors.map((a) => a.author),
+    }));
   }
 
   async getRecommendedBooks() {
-    return this.prisma.book.findMany({
+    const books = await this.prisma.book.findMany({
       take: 10,
       orderBy: {
         createdAt: 'desc',
@@ -198,6 +217,10 @@ export class BooksService {
         },
       },
     });
+    return books.map((book) => ({
+      ...book,
+      authors: book.authors.map((a) => a.author),
+    }));
   }
 
   async getById(id: number) {
@@ -241,11 +264,15 @@ export class BooksService {
       throw new NotFoundException('Book not found');
     }
 
-    return book;
+    return {
+      ...book,
+      authors: book.authors.map((a) => a.author), // Results in: [{id, name}, ...]
+      categories: book.categories.map((c) => c.category), // Results in: [{id, name}, ...]
+    };
   }
 
   async getCopiesByBookId(bookId: number) {
-    return this.prisma.bookCopy.findMany({
+    const copies = await this.prisma.bookCopy.findMany({
       where: { bookId },
       select: {
         id: true,
@@ -255,26 +282,35 @@ export class BooksService {
             id: true,
             title: true,
             authors: {
-              select: {
-                author: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
-              },
+              select: { author: { select: { id: true, name: true } } },
             },
             description: true,
             coverUrl: true,
           },
         },
         library: {
-          select: {
-            id: true,
-            name: true,
-          },
+          select: { id: true, name: true },
         },
       },
     });
+
+    return copies.map((copy) => ({
+      id: copy.id,
+      book: {
+        id: copy.book.id,
+        title: copy.book.title,
+        description: copy.book.description,
+        coverUrl: copy.book.coverUrl,
+        authors: copy.book.authors.map((a) => ({
+          id: a.author.id,
+          name: a.author.name,
+        })),
+      },
+      library: {
+        id: copy.library.id,
+        name: copy.library.name,
+      },
+      status: copy.status,
+    }));
   }
 }

@@ -14,10 +14,10 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { LoanStatus } from '@prisma/client';
 
 @Controller('loans')
-@UseGuards(JwtAuthGuard)
 export class LoansController {
   constructor(private service: LoansService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Get('in-delivery')
   getInDelivery(@Req() req: any) {
     return this.service.getUserLoans(req.user.userId, [
@@ -26,14 +26,27 @@ export class LoansController {
     ]);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('borrowed')
   getBorrowed(@Req() req: any) {
     return this.service.getUserLoans(req.user.userId, [LoanStatus.BORROWED]);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('history')
   getHistory(@Req() req: any) {
     return this.service.getUserLoans(req.user.userId, [LoanStatus.RETURNED]);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/receive')
+  receiveBook(@Req() req: any, @Param('id', ParseIntPipe) loanId: number) {
+    return this.service.receiveBook(req.user.userId, loanId);
+  }
+
+  @Post(':id/deliver')
+  deliverBook(@Param('id', ParseIntPipe) loanId: number) {
+    return this.service.deliverBook(loanId);
   }
 
   @Post(':id/return')
