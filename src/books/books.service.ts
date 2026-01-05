@@ -108,7 +108,7 @@ export class BooksService {
     return this.prisma.book.findMany({
       take: 10,
       orderBy: {
-        loans: {
+        loanRequests: {
           _count: 'desc',
         },
       },
