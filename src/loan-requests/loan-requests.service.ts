@@ -167,6 +167,19 @@ export class LoanRequestsService {
             },
           },
         },
+        library: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        recipientName: true,
+        phoneNumber: true,
+        addressLine: true,
+        city: true,
+        province: true,
+        postalCode: true,
+        dueDate: true,
         status: true,
       },
     });
@@ -182,6 +195,10 @@ export class LoanRequestsService {
             id: a.author.id,
             name: a.author.name,
           })),
+        },
+        library: {
+          id: s.library?.id,
+          name: s.library?.name,
         },
       })),
     };

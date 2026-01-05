@@ -112,6 +112,15 @@ export class BooksService {
     });
   }
 
+  async createCopy(bookId: number, libraryId: number) {
+    await this.prisma.bookCopy.create({
+      data: {
+        bookId,
+        libraryId,
+      },
+    });
+  }
+
   async getTopBooks() {
     const books = await this.prisma.book.findMany({
       take: 10,
@@ -245,13 +254,21 @@ export class BooksService {
 
     return copies.map((copy) => ({
       id: copy.id,
+      book: {
+        id: copy.book.id,
+        title: copy.book.title,
+        description: copy.book.description,
+        coverUrl: copy.book.coverUrl,
+        authors: copy.book.authors.map((a) => ({
+          id: a.author.id,
+          name: a.author.name,
+        })),
+      },
+      library: {
+        id: copy.library.id,
+        name: copy.library.name,
+      },
       status: copy.status,
-      libraryName: copy.library.name,
-      libraryId: copy.library.id,
-      title: copy.book.title,
-      description: copy.book.description,
-      coverUrl: copy.book.coverUrl,
-      authors: copy.book.authors.map((a) => a.author),
     }));
   }
 }

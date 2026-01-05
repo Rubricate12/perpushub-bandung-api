@@ -25,12 +25,6 @@ export class LoanRequestsController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Delete(':id')
-  delete(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
-    return this.service.delete(req.user.userId, id);
-  }
-
-  @UseGuards(JwtAuthGuard)
   @Post(':id/submit')
   submitDraft(
     @Req() req: any,
@@ -76,5 +70,11 @@ export class LoanRequestsController {
   @Post(':id/reject')
   reject(@Param('id', ParseIntPipe) id: number) {
     return this.service.reject(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  delete(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    return this.service.delete(req.user.userId, id);
   }
 }
