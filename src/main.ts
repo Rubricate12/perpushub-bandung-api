@@ -9,12 +9,16 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new GlobalExceptionFilter());
+  
   app.enableCors({
     origin: '*',
     methods: '*',
     allowedHeaders: '*',
   });
 
-  await app.listen(3000);
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0');
+  
+  console.log(`Application is running on: ${await app.getUrl()}`);
 }
 bootstrap();
