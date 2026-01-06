@@ -95,4 +95,32 @@ export class BooksController {
       data: await this.booksService.getCopiesByBookId(id),
     };
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/rate')
+  async rateBook(
+    @Param('id', ParseIntPipe) bookId: number,
+    @GetUser('id') userId: number,
+    @Body() body: { rating: number; comment?: string },
+  ) {
+    return {
+      status: 'success',
+      message: 'Review submitted',
+      data: await this.booksService.addReview(
+        userId,
+        bookId,
+        body.rating,
+        body.comment,
+      ),
+    };
+  }
+
+  @Get(':id/reviews')
+  async getBookReviews(@Param('id', ParseIntPipe) bookId: number) {
+    return {
+      status: 'success',
+      message: 'Reviews fetched',
+      data: await this.booksService.getReviews(bookId),
+    };
+  }
 }
