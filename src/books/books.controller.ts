@@ -6,8 +6,11 @@ import {
   ParseIntPipe,
   Body,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { BooksService } from './books.service';
+import { JwtAuthGuard } from 'src/auth/jwt.guard';
+import { GetUser } from 'src/auth/decorator/get-user.decorator';
 
 @Controller('books')
 export class BooksController {
@@ -56,12 +59,13 @@ export class BooksController {
     };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('recommended')
-  async getRecommended() {
+  async getUserRecommendations(@GetUser('id') userId: number) {
     return {
       status: 'success',
-      message: 'Recommended books fetched',
-      data: await this.booksService.getRecommendedBooks(),
+      message: 'User recommendations fetched',
+      data: await this.booksService.getUserRecommendations(userId),
     };
   }
 
@@ -74,12 +78,49 @@ export class BooksController {
     };
   }
 
+  @Get(':id/similar')
+  async getSimilarBooks(@Param('id', ParseIntPipe) id: number) {
+    return {
+      status: 'success',
+      message: 'Similar books fetched',
+      data: await this.booksService.getSimilarBooks(id),
+    };
+  }
+
   @Get(':id/copies')
   async getCopiesByBookId(@Param('id', ParseIntPipe) id: number) {
     return {
       status: 'success',
       message: 'Book copies fetched',
       data: await this.booksService.getCopiesByBookId(id),
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/rate')
+  async rateBook(
+    @Param('id', ParseIntPipe) bookId: number,
+    @GetUser('id') userId: number,
+    @Body() body: { rating: number; comment?: string },
+  ) {
+    return {
+      status: 'success',
+      message: 'Review submitted',
+      data: await this.booksService.addReview(
+        userId,
+        bookId,
+        body.rating,
+        body.comment,
+      ),
+    };
+  }
+
+  @Get(':id/reviews')
+  async getBookReviews(@Param('id', ParseIntPipe) bookId: number) {
+    return {
+      status: 'success',
+      message: 'Reviews fetched',
+      data: await this.booksService.getReviews(bookId),
     };
   }
 }
