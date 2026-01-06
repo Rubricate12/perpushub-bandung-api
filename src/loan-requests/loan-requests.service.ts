@@ -188,10 +188,10 @@ export class LoanRequestsService {
         status: true,
       },
       orderBy: [
-      {
-        updatedAt: 'desc',
-      },
-    ],
+        {
+          updatedAt: 'desc',
+        },
+      ],
     });
 
     return {
