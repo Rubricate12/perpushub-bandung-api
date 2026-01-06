@@ -7,6 +7,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Review {
+  id        Int      @id @default(autoincrement())
+  rating    Int      // 1 to 5
+  comment   String?  @db.Text
+  userId    Int
+  bookId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+  book Book @relation(fields: [bookId], references: [id])
+
+  @@unique([userId, bookId])
+}
+
 model User {
   id           Int           @id @default(autoincrement())
   username     String        @unique
@@ -19,6 +34,7 @@ model User {
   loanRequests LoanRequest[]
   loans        Loan[]
   hashedRefreshToken String?
+  reviews Review[]
 }
 
 model Address {
@@ -54,6 +70,9 @@ model Book {
   categories    BookCategory[]
   copies        BookCopy[]
   loanRequests  LoanRequest[]
+  reviews       Review[]
+  averageRating Float @default(0) 
+  totalRatings  Int   @default(0)
 }
 
 model Author {

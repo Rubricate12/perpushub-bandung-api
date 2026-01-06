@@ -231,33 +231,149 @@ export class BooksService {
     }));
   }
 
-  async getRecommendedBooks() {
-    const books = await this.prisma.book.findMany({
-      take: 10,
-      orderBy: {
-        createdAt: 'desc',
-      },
+  //rekomendasi berdasarkan user
+  async getUserRecommendations(userId: number) {
+    const TOTAL_TARGET = 15;   // total buku yang diambil
+    const STRICT_CAP = 10;     // max buku personalized
+
+    // ambil history
+    const loans = await this.prisma.loanRequest.findMany({
+      where: { userId },
       select: {
-        id: true,
-        title: true,
-        description: true,
-        coverUrl: true,
-        authors: {
+        book: {
           select: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+            id: true,
+            authors: { select: { authorId: true } },
+            categories: { select: { categoryId: true } },
           },
         },
       },
     });
-    return books.map((book) => ({
-      ...book,
-      authors: book.authors.map((a) => a.author),
-    }));
+
+    const reviews = await this.prisma.review.findMany({
+      where: { userId, rating: { gte: 4 } },
+      select: {
+        book: {
+          select: {
+            id: true,
+            authors: { select: { authorId: true } },
+            categories: { select: { categoryId: true } },
+          },
+        },
+      },
+    });
+
+    // campurin semua interaksi
+    const allInteractions = [...loans.map((l) => l.book), ...reviews.map((r) => r.book)];
+    
+    // exclude buku yang udah dibaca
+    const readBookIds = new Set(allInteractions.map((b) => b.id));
+
+    // tambahin liked authors & categories
+    const likedAuthorIds = new Set<number>();
+    const likedCategoryIds = new Set<number>();
+
+    allInteractions.forEach((book) => {
+      book.authors.forEach((a) => likedAuthorIds.add(a.authorId));
+      book.categories.forEach((c) => likedCategoryIds.add(c.categoryId));
+    });
+
+    // fetch rekomendasi personalized dulu
+    const strictRecommendations = await this.prisma.book.findMany({
+      where: {
+        id: { notIn: Array.from(readBookIds) }, 
+        OR: [
+          { authors: { some: { authorId: { in: Array.from(likedAuthorIds) } } } },
+          { categories: { some: { categoryId: { in: Array.from(likedCategoryIds) } } } },
+        ],
+      },
+      take: STRICT_CAP, 
+      orderBy: [
+        { averageRating: 'desc' },
+        { totalRatings: 'desc' },
+      ],
+      select: this.getRecommendationSelectFields(), 
+    });
+
+    //fetch filler minimal 5 buku
+    const needed = TOTAL_TARGET - strictRecommendations.length;
+
+    if (needed > 0) {
+        const currentIds = strictRecommendations.map((b) => b.id);
+        const excludeIds = [...Array.from(readBookIds), ...currentIds];
+
+        const fillerBooks = await this.prisma.book.findMany({
+            where: {
+                id: { notIn: excludeIds }, 
+            },
+            take: needed, // fill slot sisanya
+            orderBy: [
+                { averageRating: 'desc' }, 
+                { totalRatings: 'desc' },
+            ],
+            select: this.getRecommendationSelectFields(),
+        });
+
+        // Merge personalized dan filler
+        return [...strictRecommendations, ...fillerBooks];
+    }
+
+    return strictRecommendations;
+  }
+
+  // Helper aja
+  private getRecommendationSelectFields() {
+    return {
+      id: true,
+      title: true,
+      coverUrl: true,
+      averageRating: true,
+      totalRatings: true,
+      authors: {
+        select: { author: { select: { name: true } } },
+      },
+      categories: {
+        select: { category: { select: { name: true } } },
+      }
+    };
+  }
+
+  //itembased recommendation
+  async getSimilarBooks(referenceBookId: number) {
+    const referenceBook = await this.prisma.book.findUnique({
+      where: { id: referenceBookId },
+      include: { authors: true, categories: true },
+    });
+
+    if (!referenceBook) return [];
+
+    const authorIds = referenceBook.authors.map((a) => a.authorId);
+    const categoryIds = referenceBook.categories.map((c) => c.categoryId);
+
+    return this.prisma.book.findMany({
+      where: {
+        id: { not: referenceBookId },
+        OR: [
+          { authors: { some: { authorId: { in: authorIds } } } },
+          { categories: { some: { categoryId: { in: categoryIds } } } },
+        ],
+      },
+      take: 10,
+      // Sort by rating dulu, baru yang terbaru
+      orderBy: [
+        { averageRating: 'desc' }, 
+        { createdAt: 'desc' }
+      ],
+      select: {
+        id: true,
+        title: true,
+        coverUrl: true,
+        averageRating: true,
+        authors: {
+          select: { author: { select: { name: true } } },
+        },
+      },
+    });
   }
 
   async getById(id: number) {
@@ -274,6 +390,8 @@ export class BooksService {
         pageCount: true,
         coverUrl: true,
         language: true,
+        averageRating: true, 
+        totalRatings: true,
         authors: {
           select: {
             author: {
@@ -290,6 +408,23 @@ export class BooksService {
               select: {
                 id: true,
                 name: true,
+              },
+            },
+          },
+        },
+        reviews: {
+          take: 5, 
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            createdAt: true,
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                username: true, 
               },
             },
           },
@@ -349,5 +484,64 @@ export class BooksService {
       },
       status: copy.status,
     }));
+  }
+  async addReview(userId: number, bookId: number, rating: number, comment?: string) {
+    if (rating < 1 || rating > 5) {
+      throw new BadRequestException('Rating must be between 1 and 5');
+    }
+
+    const book = await this.prisma.book.findUnique({ where: { id: bookId } });
+    if (!book) throw new NotFoundException('Book not found');
+
+    // pakai transaction karena ada beberapa step
+    return this.prisma.$transaction(async (tx) => {
+      //create atau update review
+      const review = await tx.review.upsert({
+        where: {
+          userId_bookId: { userId, bookId },
+        },
+        update: {
+          rating,
+          comment,
+        },
+        create: {
+          userId,
+          bookId,
+          rating,
+          comment,
+        },
+      });
+
+      // hitung avg baru
+      const aggregations = await tx.review.aggregate({
+        where: { bookId },
+        _avg: { rating: true },
+        _count: { rating: true },
+      });
+
+      // update rating buku
+      await tx.book.update({
+        where: { id: bookId },
+        data: {
+          averageRating: aggregations._avg.rating || 0,
+          totalRatings: aggregations._count.rating || 0,
+        },
+      });
+
+      return review;
+    });
+  }
+
+  //get review for book
+  async getReviews(bookId: number) {
+    return this.prisma.review.findMany({
+      where: { bookId },
+      include: {
+        user: {
+          select: { id: true, username: true, fullName: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }
