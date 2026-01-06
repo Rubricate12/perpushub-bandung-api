@@ -174,13 +174,63 @@ export class BooksService {
       },
     });
   }
-
-  async getRecommendedBooks() {
-    return this.prisma.book.findMany({
-      take: 10,
-      orderBy: {
-        createdAt: 'desc',
+  //rekomendasi berdasarkan user
+  async getUserRecommendations(userId: number) {
+    // get loan history
+    const userHistory = await this.prisma.loanRequest.findMany({
+      where: { userId },
+      select: {
+        book: {
+          select: {
+            id: true,
+            authors: { select: { authorId: true } },
+            categories: { select: { categoryId: true } },
+          },
+        },
       },
+    });
+
+    // kalo belum pernah loan, ambil books paling baru
+    if (userHistory.length === 0) {
+      return this.getTopBooks();
+    }
+
+    // ambil preference
+    const readBookIds = userHistory.map((h) => h.book.id);
+
+    // Get all Author IDs yang pernah dibaca
+    const likedAuthorIds = [
+      ...new Set(
+        userHistory.flatMap((h) => h.book.authors.map((a) => a.authorId)),
+      ),
+    ];
+
+    // Get all Category IDs yang pernah dibaca
+    const likedCategoryIds = [
+      ...new Set(
+        userHistory.flatMap((h) => h.book.categories.map((c) => c.categoryId)),
+      ),
+    ];
+
+    // cari rekomendasi buku berdasarkan preference
+    return this.prisma.book.findMany({
+      where: {
+        id: { notIn: readBookIds }, // exclude buku yang udah dibaca
+        OR: [
+          {
+            authors: {
+              some: { authorId: { in: likedAuthorIds } }, // Match Authors
+            },
+          },
+          {
+            categories: {
+              some: { categoryId: { in: likedCategoryIds } }, // Match Categories
+            },
+          },
+        ],
+      },
+      take: 20,
+      orderBy: { createdAt: 'desc' }, // Show newer books matching preferences first
       select: {
         id: true,
         title: true,
@@ -188,12 +238,51 @@ export class BooksService {
         coverUrl: true,
         authors: {
           select: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+            author: { select: { name: true } },
+          },
+        },
+        categories: {
+          select: {
+            category: { select: { name: true } },
+          },
+        },
+      },
+    });
+  }
+
+  //itembased recommendation
+  async getSimilarBooks(referenceBookId: number) {
+    const referenceBook = await this.prisma.book.findUnique({
+      where: { id: referenceBookId },
+      include: {
+        authors: true,
+        categories: true,
+      },
+    });
+
+    if (!referenceBook) return [];
+
+    const authorIds = referenceBook.authors.map((a) => a.authorId);
+    const categoryIds = referenceBook.categories.map((c) => c.categoryId);
+
+    return this.prisma.book.findMany({
+      where: {
+        id: { not: referenceBookId },
+        OR: [
+          { authors: { some: { authorId: { in: authorIds } } } },
+          { categories: { some: { categoryId: { in: categoryIds } } } },
+        ],
+      },
+      take: 10, //ambil 10 buku
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        coverUrl: true,
+        authors: {
+          select: {
+            author: { select: { name: true } },
           },
         },
       },

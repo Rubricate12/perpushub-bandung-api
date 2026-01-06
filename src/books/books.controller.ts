@@ -6,8 +6,11 @@ import {
   ParseIntPipe,
   Body,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { BooksService } from './books.service';
+import { JwtAuthGuard } from 'src/auth/jwt.guard';
+import { GetUser } from 'src/auth/decorator/get-user.decorator';
 
 @Controller('books')
 export class BooksController {
@@ -44,12 +47,13 @@ export class BooksController {
     };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('recommended')
-  async getRecommended() {
+  async getUserRecommendations(@GetUser('id') userId: number) {
     return {
       status: 'success',
-      message: 'Recommended books fetched',
-      data: await this.booksService.getRecommendedBooks(),
+      message: 'User recommendations fetched',
+      data: await this.booksService.getUserRecommendations(userId),
     };
   }
 
@@ -59,6 +63,15 @@ export class BooksController {
       status: 'success',
       message: 'Book detail fetched',
       data: await this.booksService.getById(id),
+    };
+  }
+
+  @Get(':id/similar')
+  async getSimilarBooks(@Param('id', ParseIntPipe) id: number) {
+    return {
+      status: 'success',
+      message: 'Similar books fetched',
+      data: await this.booksService.getSimilarBooks(id),
     };
   }
 
