@@ -1,4 +1,3 @@
-// src/auth/guards/rt.guard.ts
 import { AuthGuard } from '@nestjs/passport';
 
 export class RtGuard extends AuthGuard('jwt-refresh') {

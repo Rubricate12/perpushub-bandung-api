@@ -31,7 +31,7 @@ export class UsersService {
   async createAddress(userId: number, dto: CreateAddressDto) {
     return this.prisma.address.create({
       data: {
-        userId, 
+        userId,
         label: dto.label,
         recipientName: dto.recipientName,
         phoneNumber: dto.phoneNumber,
@@ -47,6 +47,17 @@ export class UsersService {
   async getAddressesByUserId(userId: number) {
     return this.prisma.address.findMany({
       where: { userId },
+      select: {
+        id: true,
+        userId: true,
+        label: true,
+        recipientName: true,
+        phoneNumber: true,
+        addressLine: true,
+        city: true,
+        province: true,
+        postalCode: true,
+      },
     });
   }
 

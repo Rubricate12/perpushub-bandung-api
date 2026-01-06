@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call */
+
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -44,12 +50,14 @@ export class BooksService {
     const language = volume.language ?? 'en';
 
     const isbn10 =
-      volume.industryIdentifiers?.find((i) => i.type === 'ISBN_10')
-        ?.identifier ?? null;
+      volume.industryIdentifiers?.find(
+        (i: { type: string }) => i.type === 'ISBN_10',
+      )?.identifier ?? null;
 
     const isbn13 =
-      volume.industryIdentifiers?.find((i) => i.type === 'ISBN_13')
-        ?.identifier ?? null;
+      volume.industryIdentifiers?.find(
+        (i: { type: string }) => i.type === 'ISBN_13',
+      )?.identifier ?? null;
 
     const authors = volume.authors ?? [];
     const categories = volume.categories ?? [];
@@ -104,13 +112,22 @@ export class BooksService {
     });
   }
 
+  async createCopy(bookId: number, libraryId: number) {
+    await this.prisma.bookCopy.create({
+      data: {
+        bookId,
+        libraryId,
+      },
+    });
+  }
+
   async search(query: string) {
-    return this.prisma.book.findMany({
+    const books = await this.prisma.book.findMany({
       where: {
         OR: [
           // 1. Search by Title
-          { title: { contains: query } }, 
-          
+          { title: { contains: query } },
+
           // 2. Search by ISBN
           { isbn13: { contains: query } },
 
@@ -126,30 +143,65 @@ export class BooksService {
           },
         ],
       },
-      
       select: {
         id: true,
         title: true,
-        coverUrl: true,
         authors: {
           select: {
-            author: { select: { name: true } },
+            author: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
+        description: true,
+        coverUrl: true,
       },
-      take: 20, 
+      take: 20,
     });
+    return books.map((book) => ({
+      ...book,
+      authors: book.authors.map((a) => ({
+        id: a.author.id,
+        name: a.author.name,
+      })),
+    }));
   }
 
   async findAll() {
-    return this.prisma.book.findMany({
+    const books = await this.prisma.book.findMany({
+      select: {
+        id: true,
+        title: true,
+        authors: {
+          select: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        description: true,
+        coverUrl: true,
+      },
       take: 20,
       orderBy: { createdAt: 'desc' },
     });
+    return books.map((book) => ({
+      ...book,
+      authors: book.authors.map((a) => ({
+        id: a.author.id,
+        name: a.author.name,
+      })),
+    }));
   }
 
   async getTopBooks() {
-    return this.prisma.book.findMany({
+    const books = await this.prisma.book.findMany({
       take: 10,
       orderBy: {
         loanRequests: {
@@ -173,6 +225,10 @@ export class BooksService {
         },
       },
     });
+    return books.map((book) => ({
+      ...book,
+      authors: book.authors.map((a) => a.author),
+    }));
   }
   //rekomendasi berdasarkan user
   async getUserRecommendations(userId: number) {
@@ -330,11 +386,15 @@ export class BooksService {
       throw new NotFoundException('Book not found');
     }
 
-    return book;
+    return {
+      ...book,
+      authors: book.authors.map((a) => a.author), // Results in: [{id, name}, ...]
+      categories: book.categories.map((c) => c.category), // Results in: [{id, name}, ...]
+    };
   }
 
   async getCopiesByBookId(bookId: number) {
-    return this.prisma.bookCopy.findMany({
+    const copies = await this.prisma.bookCopy.findMany({
       where: { bookId },
       select: {
         id: true,
@@ -344,26 +404,35 @@ export class BooksService {
             id: true,
             title: true,
             authors: {
-              select: {
-                author: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
-              },
+              select: { author: { select: { id: true, name: true } } },
             },
             description: true,
             coverUrl: true,
           },
         },
         library: {
-          select: {
-            id: true,
-            name: true,
-          },
+          select: { id: true, name: true },
         },
       },
     });
+
+    return copies.map((copy) => ({
+      id: copy.id,
+      book: {
+        id: copy.book.id,
+        title: copy.book.title,
+        description: copy.book.description,
+        coverUrl: copy.book.coverUrl,
+        authors: copy.book.authors.map((a) => ({
+          id: a.author.id,
+          name: a.author.name,
+        })),
+      },
+      library: {
+        id: copy.library.id,
+        name: copy.library.name,
+      },
+      status: copy.status,
+    }));
   }
 }

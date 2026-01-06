@@ -25,10 +25,22 @@ export class BooksController {
     };
   }
 
+  @Post('copies')
+  async createCopy(
+    @Body('bookId') bookId: number,
+    @Body('libraryId') libraryId: number,
+  ) {
+    await this.booksService.createCopy(bookId, libraryId);
+    return {
+      status: 'success',
+      message: 'Book copy created',
+    };
+  }
+
   @Get()
   async getBooks(@Query('q') q?: string) {
-    const books = q 
-      ? await this.booksService.search(q) 
+    const books = q
+      ? await this.booksService.search(q)
       : await this.booksService.findAll();
 
     return {

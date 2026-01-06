@@ -3,10 +3,27 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BookStatus } from '@prisma/client';
+import { CreateLibraryDto } from './dto/create-library.dto';
 
 @Injectable()
 export class LibrariesService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async create(dto: CreateLibraryDto) {
+    await this.prisma.library.create({
+      data: {
+        name: dto.name,
+        address: dto.address,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+      },
+    });
+
+    return {
+      status: 'success',
+      message: 'Success',
+    };
+  }
 
   async getAll() {
     return this.prisma.library.findMany({
@@ -14,6 +31,8 @@ export class LibrariesService {
         id: true,
         name: true,
         address: true,
+        latitude: true,
+        longitude: true,
       },
     });
   }
@@ -56,6 +75,7 @@ export class LibrariesService {
             id: true,
             title: true,
             coverUrl: true,
+            description: true,
           },
         },
       },
