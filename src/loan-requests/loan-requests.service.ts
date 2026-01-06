@@ -204,6 +204,71 @@ export class LoanRequestsService {
     };
   }
 
+  async getSubmittedAdmin() {
+    const submitted = await this.prisma.loanRequest.findMany({
+      where: {
+        status: {
+          in: [LoanRequestStatus.PENDING],
+        },
+      },
+      select: {
+        id: true,
+        userId: true,
+        book: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            coverUrl: true,
+            authors: {
+              select: {
+                author: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        library: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        recipientName: true,
+        phoneNumber: true,
+        addressLine: true,
+        city: true,
+        province: true,
+        postalCode: true,
+        dueDate: true,
+        status: true,
+      },
+    });
+
+    return {
+      status: 'success',
+      message: 'Success',
+      data: submitted.map((s) => ({
+        ...s,
+        book: {
+          ...s.book,
+          authors: s.book.authors.map((a) => ({
+            id: a.author.id,
+            name: a.author.name,
+          })),
+        },
+        library: {
+          id: s.library?.id,
+          name: s.library?.name,
+        },
+      })),
+    };
+  }
+
   async approve(requestId: number, bookCopyId: number, newDueDate?: Date) {
     await this.prisma.$transaction(async (tx) => {
       // Get the request

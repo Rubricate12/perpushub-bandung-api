@@ -26,10 +26,20 @@ export class LoansController {
     ]);
   }
 
+  @Get('in-delivery/admin')
+  getInDeliveryAdmin() {
+    return this.service.getUserLoansAdmin([LoanStatus.PROCESSING]);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('borrowed')
   getBorrowed(@Req() req: any) {
     return this.service.getUserLoans(req.user.userId, [LoanStatus.BORROWED]);
+  }
+
+  @Get('borrowed/admin')
+  getBorrowedAdmin() {
+    return this.service.getUserLoansAdmin([LoanStatus.BORROWED]);
   }
 
   @UseGuards(JwtAuthGuard)

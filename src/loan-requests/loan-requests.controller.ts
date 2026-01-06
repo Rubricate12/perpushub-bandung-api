@@ -54,6 +54,11 @@ export class LoanRequestsController {
     return this.service.getSubmitted(req.user.userId);
   }
 
+  @Get('submitted/admin')
+  getSubmittedAdmin() {
+    return this.service.getSubmittedAdmin();
+  }
+
   @Post(':id/approve')
   approve(
     @Param('id', ParseIntPipe) id: number,

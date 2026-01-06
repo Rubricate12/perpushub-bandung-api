@@ -86,6 +86,80 @@ export class LoansService {
     };
   }
 
+  async getUserLoansAdmin(statuses: LoanStatus[]) {
+    const loans = await this.prisma.loan.findMany({
+      where: {
+        status: { in: statuses },
+      },
+      include: {
+        bookCopy: {
+          include: {
+            book: {
+              select: {
+                id: true,
+                title: true,
+                authors: {
+                  include: {
+                    author: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
+                description: true,
+                coverUrl: true,
+              },
+            },
+            library: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return {
+      status: 'success',
+      message: 'Success',
+      data: loans.map((loan) => ({
+        id: loan.id,
+        userId: loan.userId,
+        book: {
+          id: loan.bookCopy.book.id,
+          title: loan.bookCopy.book.title,
+          authors: loan.bookCopy.book.authors.map((a) => ({
+            id: a.author.id,
+            name: a.author.name,
+          })),
+          description: loan.bookCopy.book.description,
+          coverUrl: loan.bookCopy.book.coverUrl,
+        },
+        library: {
+          id: loan.bookCopy.library.id,
+          name: loan.bookCopy.library.name,
+        },
+        recipientName: loan.recipientName,
+        phoneNumber: loan.phoneNumber,
+        addressLine: loan.addressLine,
+        city: loan.city,
+        province: loan.province,
+        postalCode: loan.postalCode,
+        dueDate: statuses.includes(LoanStatus.RETURNED)
+          ? loan.returnedAt
+          : loan.dueDate,
+        status: loan.status,
+      })),
+    };
+  }
+
   async receiveBook(userId: number, loanId: number) {
     await this.prisma.$transaction(async (tx) => {
       // Find the loan

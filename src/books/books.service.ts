@@ -50,12 +50,14 @@ export class BooksService {
     const language = volume.language ?? 'en';
 
     const isbn10 =
-      volume.industryIdentifiers?.find((i) => i.type === 'ISBN_10')
-        ?.identifier ?? null;
+      volume.industryIdentifiers?.find(
+        (i: { type: string }) => i.type === 'ISBN_10',
+      )?.identifier ?? null;
 
     const isbn13 =
-      volume.industryIdentifiers?.find((i) => i.type === 'ISBN_13')
-        ?.identifier ?? null;
+      volume.industryIdentifiers?.find(
+        (i: { type: string }) => i.type === 'ISBN_13',
+      )?.identifier ?? null;
 
     const authors = volume.authors ?? [];
     const categories = volume.categories ?? [];
@@ -120,7 +122,7 @@ export class BooksService {
   }
 
   async search(query: string) {
-    return this.prisma.book.findMany({
+    const books = await this.prisma.book.findMany({
       where: {
         OR: [
           // 1. Search by Title
@@ -141,26 +143,61 @@ export class BooksService {
           },
         ],
       },
-
       select: {
         id: true,
         title: true,
-        coverUrl: true,
         authors: {
           select: {
-            author: { select: { name: true } },
+            author: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
+        description: true,
+        coverUrl: true,
       },
       take: 20,
     });
+    return books.map((book) => ({
+      ...book,
+      authors: book.authors.map((a) => ({
+        id: a.author.id,
+        name: a.author.name,
+      })),
+    }));
   }
 
   async findAll() {
-    return this.prisma.book.findMany({
+    const books = await this.prisma.book.findMany({
+      select: {
+        id: true,
+        title: true,
+        authors: {
+          select: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        description: true,
+        coverUrl: true,
+      },
       take: 20,
       orderBy: { createdAt: 'desc' },
     });
+    return books.map((book) => ({
+      ...book,
+      authors: book.authors.map((a) => ({
+        id: a.author.id,
+        name: a.author.name,
+      })),
+    }));
   }
 
   async getTopBooks() {

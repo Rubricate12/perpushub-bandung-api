@@ -9,6 +9,11 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new GlobalExceptionFilter());
+  app.enableCors({
+    origin: '*',
+    methods: '*',
+    allowedHeaders: '*',
+  });
 
   await app.listen(3000);
 }
