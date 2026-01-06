@@ -119,6 +119,11 @@ export class LoanRequestsService {
         },
         status: true,
       },
+      orderBy: [
+        {
+          updatedAt: 'desc',
+        },
+      ],
     });
 
     return {
@@ -182,6 +187,11 @@ export class LoanRequestsService {
         dueDate: true,
         status: true,
       },
+      orderBy: [
+      {
+        updatedAt: 'desc',
+      },
+    ],
     });
 
     return {
@@ -247,6 +257,11 @@ export class LoanRequestsService {
         dueDate: true,
         status: true,
       },
+      orderBy: [
+        {
+          updatedAt: 'desc',
+        },
+      ],
     });
 
     return {
