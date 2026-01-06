@@ -108,7 +108,7 @@ export class BooksService {
         });
       }
 
-      return book;
+      return book.id;
     });
   }
 
@@ -233,8 +233,8 @@ export class BooksService {
 
   //rekomendasi berdasarkan user
   async getUserRecommendations(userId: number) {
-    const TOTAL_TARGET = 15;   // total buku yang diambil
-    const STRICT_CAP = 10;     // max buku personalized
+    const TOTAL_TARGET = 15; // total buku yang diambil
+    const STRICT_CAP = 10; // max buku personalized
 
     // ambil history
     const loans = await this.prisma.loanRequest.findMany({
@@ -264,8 +264,11 @@ export class BooksService {
     });
 
     // campurin semua interaksi
-    const allInteractions = [...loans.map((l) => l.book), ...reviews.map((r) => r.book)];
-    
+    const allInteractions = [
+      ...loans.map((l) => l.book),
+      ...reviews.map((r) => r.book),
+    ];
+
     // exclude buku yang udah dibaca
     const readBookIds = new Set(allInteractions.map((b) => b.id));
 
@@ -281,44 +284,64 @@ export class BooksService {
     // fetch rekomendasi personalized dulu
     const strictRecommendations = await this.prisma.book.findMany({
       where: {
-        id: { notIn: Array.from(readBookIds) }, 
+        id: { notIn: Array.from(readBookIds) },
         OR: [
-          { authors: { some: { authorId: { in: Array.from(likedAuthorIds) } } } },
-          { categories: { some: { categoryId: { in: Array.from(likedCategoryIds) } } } },
+          {
+            authors: { some: { authorId: { in: Array.from(likedAuthorIds) } } },
+          },
+          {
+            categories: {
+              some: { categoryId: { in: Array.from(likedCategoryIds) } },
+            },
+          },
         ],
       },
-      take: STRICT_CAP, 
-      orderBy: [
-        { averageRating: 'desc' },
-        { totalRatings: 'desc' },
-      ],
-      select: this.getRecommendationSelectFields(), 
+      take: STRICT_CAP,
+      orderBy: [{ averageRating: 'desc' }, { totalRatings: 'desc' }],
+      select: this.getRecommendationSelectFields(),
     });
 
     //fetch filler minimal 5 buku
     const needed = TOTAL_TARGET - strictRecommendations.length;
 
     if (needed > 0) {
-        const currentIds = strictRecommendations.map((b) => b.id);
-        const excludeIds = [...Array.from(readBookIds), ...currentIds];
+      const currentIds = strictRecommendations.map((b) => b.id);
+      const excludeIds = [...Array.from(readBookIds), ...currentIds];
 
-        const fillerBooks = await this.prisma.book.findMany({
-            where: {
-                id: { notIn: excludeIds }, 
-            },
-            take: needed, // fill slot sisanya
-            orderBy: [
-                { averageRating: 'desc' }, 
-                { totalRatings: 'desc' },
-            ],
-            select: this.getRecommendationSelectFields(),
-        });
+      const fillerBooks = await this.prisma.book.findMany({
+        where: {
+          id: { notIn: excludeIds },
+        },
+        take: needed, // fill slot sisanya
+        orderBy: [{ averageRating: 'desc' }, { totalRatings: 'desc' }],
+        select: this.getRecommendationSelectFields(),
+      });
 
-        // Merge personalized dan filler
-        return [...strictRecommendations, ...fillerBooks];
+      // Merge personalized dan filler
+      return [...strictRecommendations, ...fillerBooks].map((b) => ({
+        ...b,
+        authors: b.authors.map((a) => ({
+          id: a.author.id,
+          name: a.author.name,
+        })),
+        categories: b.categories.map((c) => ({
+          id: c.category.id,
+          name: c.category.name,
+        })),
+      }));
     }
 
-    return strictRecommendations;
+    return strictRecommendations.map((b) => ({
+      ...b,
+      authors: b.authors.map((a) => ({
+        id: a.author.id,
+        name: a.author.name,
+      })),
+      categories: b.categories.map((c) => ({
+        id: c.category.id,
+        name: c.category.name,
+      })),
+    }));
   }
 
   // Helper aja
@@ -329,12 +352,13 @@ export class BooksService {
       coverUrl: true,
       averageRating: true,
       totalRatings: true,
+      description: true,
       authors: {
-        select: { author: { select: { name: true } } },
+        select: { author: { select: { id: true, name: true } } },
       },
       categories: {
-        select: { category: { select: { name: true } } },
-      }
+        select: { category: { select: { id: true, name: true } } },
+      },
     };
   }
 
@@ -349,8 +373,7 @@ export class BooksService {
 
     const authorIds = referenceBook.authors.map((a) => a.authorId);
     const categoryIds = referenceBook.categories.map((c) => c.categoryId);
-
-    return this.prisma.book.findMany({
+    const books = await this.prisma.book.findMany({
       where: {
         id: { not: referenceBookId },
         OR: [
@@ -360,20 +383,33 @@ export class BooksService {
       },
       take: 10,
       // Sort by rating dulu, baru yang terbaru
-      orderBy: [
-        { averageRating: 'desc' }, 
-        { createdAt: 'desc' }
-      ],
+      orderBy: [{ averageRating: 'desc' }, { createdAt: 'desc' }],
       select: {
         id: true,
         title: true,
         coverUrl: true,
+        description: true,
         averageRating: true,
         authors: {
-          select: { author: { select: { name: true } } },
+          select: { author: { select: { id: true, name: true } } },
+        },
+        categories: {
+          select: { category: { select: { id: true, name: true } } },
         },
       },
     });
+
+    return books.map((b) => ({
+      ...b,
+      authors: b.authors.map((a) => ({
+        id: a.author.id,
+        name: a.author.name,
+      })),
+      categories: b.categories.map((c) => ({
+        id: c.category.id,
+        name: c.category.name,
+      })),
+    }));
   }
 
   async getById(id: number) {
@@ -390,7 +426,7 @@ export class BooksService {
         pageCount: true,
         coverUrl: true,
         language: true,
-        averageRating: true, 
+        averageRating: true,
         totalRatings: true,
         authors: {
           select: {
@@ -413,7 +449,7 @@ export class BooksService {
           },
         },
         reviews: {
-          take: 5, 
+          take: 5,
           orderBy: { createdAt: 'desc' },
           select: {
             id: true,
@@ -424,7 +460,7 @@ export class BooksService {
               select: {
                 id: true,
                 fullName: true,
-                username: true, 
+                username: true,
               },
             },
           },
@@ -485,7 +521,12 @@ export class BooksService {
       status: copy.status,
     }));
   }
-  async addReview(userId: number, bookId: number, rating: number, comment?: string) {
+  async addReview(
+    userId: number,
+    bookId: number,
+    rating: number,
+    comment?: string,
+  ) {
     if (rating < 1 || rating > 5) {
       throw new BadRequestException('Rating must be between 1 and 5');
     }
