@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.1.x"]
 }
 
 datasource db {
@@ -9,7 +10,7 @@ datasource db {
 
 model Review {
   id        Int      @id @default(autoincrement())
-  rating    Int      // 1 to 5
+  rating    Int // 1 to 5
   comment   String?  @db.Text
   userId    Int
   bookId    Int
@@ -23,18 +24,18 @@ model Review {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  username     String        @unique
-  fullName     String
-  email        String        @unique
-  password     String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  addresses    Address[]
-  loanRequests LoanRequest[]
-  loans        Loan[]
+  id                 Int           @id @default(autoincrement())
+  username           String        @unique
+  fullName           String
+  email              String        @unique
+  password           String
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  addresses          Address[]
+  loanRequests       LoanRequest[]
+  loans              Loan[]
   hashedRefreshToken String?
-  reviews Review[]
+  reviews            Review[]
 }
 
 model Address {
@@ -71,8 +72,8 @@ model Book {
   copies        BookCopy[]
   loanRequests  LoanRequest[]
   reviews       Review[]
-  averageRating Float @default(0) 
-  totalRatings  Int   @default(0)
+  averageRating Float          @default(0)
+  totalRatings  Int            @default(0)
 }
 
 model Author {
